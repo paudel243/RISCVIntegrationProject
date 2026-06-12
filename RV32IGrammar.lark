@@ -1,0 +1,88 @@
+//start grammar
+start: _NL* globaldef _NL+ [datadef] textdef
+//Productions
+
+
+
+
+globaldef: GLOBALDIR LABELREF
+datadef: DATADIR _NL+ dataassign+
+dataassign: LABELDEC TYPEDIR dtypeset _NL+
+
+
+textdef: TEXTDIR _NL+ (codeline _NL)* codeline
+codeline: textlabeldec? instruction?
+// instruction: instructionlabelonly | instructioninsonly | instructionboth
+// instructionlabelonly: LABELDEC
+// instructioninsonly: instructionset
+// instructionboth: LABELDEC instructionset
+
+textlabeldec: LABELDEC
+dtypeset: HEX | INT
+instruction:  rtypeins | itypeins | btypeins | stypeins | ltypeins
+
+rtypeins: RTYPEOPS REGREF COMMA REGREF COMMA REGREF
+itypeins: ITYPEOPS REGREF COMMA REGREF COMMA dtypeset
+btypeins: BTYPEOPS REGREF COMMA REGREF COMMA LABELREF
+stypeins: SWOPS REGREF COMMA dtypeset? LPAREN REGREF RPAREN
+ltypeins: LWOPS REGREF COMMA dtypeset? LPAREN REGREF RPAREN
+
+
+
+
+
+///Tokens/
+
+RTYPEOPS:       ADDOPS
+        |       SUBOPS
+
+ITYPEOPS:       ADDIOPS
+
+BTYPEOPS:       BEQOPS
+        |       BNEOPS
+TYPEDIR.3: WORDDIR
+
+# %import common.NEWLINE -> _NL
+_NL: /(\r?\n[\t ]*)+/
+%import common.WS_INLINE
+%declare _INDENT _DEDENT
+%ignore WS_INLINE
+// %import .path.to.file
+
+
+//Tokens
+GLOBALDIR.3: ".global"
+DATADIR.3: ".data"
+TEXTDIR.3: ".text"
+WORDDIR.3: ".word"
+
+
+
+ADDOPS: /add/i
+SUBOPS: /sub/i
+LWOPS: /lw/i
+SWOPS: /sw/i
+
+ADDIOPS: /addi/i
+
+BEQOPS: /beq/i
+BNEOPS: /bne/i
+
+
+
+
+
+COMMA: ","
+
+REGREF.3: /x\d+/
+
+
+LABELREF.1: /[a-zA-Z][0-9a-zA-Z]*/
+ 
+//Data Types
+HEX.100: /0[xX][0-9A-Fa-f]{1,8}/
+INT.1: /\d/+
+LABELDEC.3: /[a-zA-Z][0-9a-zA-Z]*/":"
+
+LPAREN: "("
+RPAREN: ")"

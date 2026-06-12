@@ -1,0 +1,11 @@
+streamlit
+streamlit-aggrid
+st-material-table
+streamlit_code_editor
+streamlit-echarts
+plotly
+altair
+itables
+bitarray
+pandas
+lark
