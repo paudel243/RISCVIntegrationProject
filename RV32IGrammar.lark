@@ -7,8 +7,8 @@ start: _NL* globaldef _NL+ [datadef] textdef
 
 globaldef: GLOBALDIR LABELREF
 datadef: DATADIR _NL+ dataassign+
-dataassign: LABELDEC TYPEDIR dtypeset _NL+
-
+dataassign: wordassign
+wordassign: LABELDEC WORDDIR dtypeset _NL+
 
 textdef: TEXTDIR _NL+ (codeline _NL)* codeline
 codeline: textlabeldec? instruction?
@@ -18,7 +18,7 @@ codeline: textlabeldec? instruction?
 // instructionboth: LABELDEC instructionset
 
 textlabeldec: LABELDEC
-dtypeset: HEX | INT
+
 instruction:  rtypeins | itypeins | btypeins | stypeins | ltypeins
 
 rtypeins: RTYPEOPS REGREF COMMA REGREF COMMA REGREF
@@ -29,17 +29,29 @@ ltypeins: LWOPS REGREF COMMA dtypeset? LPAREN REGREF RPAREN
 
 
 
-
+dtypeset: HEX | INT
 
 ///Tokens/
 
 RTYPEOPS:       ADDOPS
         |       SUBOPS
+        |       ANDOPS
+        |       OROPS
+        |       SLLOPS
+        |       SRLOPS
+        |       SLTOPS
 
 ITYPEOPS:       ADDIOPS
+        |       ANDIOPS
+        |       ORIOPS
+        |       SLLIOPS
+        |       SRLIOPS
+        |       SLTIOPS
 
 BTYPEOPS:       BEQOPS
         |       BNEOPS
+        |       BLTOPS
+        |       BGEOPS
 TYPEDIR.3: WORDDIR
 
 # %import common.NEWLINE -> _NL
@@ -56,17 +68,44 @@ DATADIR.3: ".data"
 TEXTDIR.3: ".text"
 WORDDIR.3: ".word"
 
+// ADDOPS.100: "[aA][dD][dD]"
+// SUBOPS.100: "[sS][uU][bB]"
+// LWOPS: "[lL][wW]"
+// SWOPS: "[sS][wW]"
+// ADDIOPS: "[aA][dD][dD][iI]"
+// SLTOPS:"[sS][lL][tT]"
+// SLTIOPS:"[sS][lL][tT][iI]"
+// SLLOPS:"[sS][lL][lL]"
+// SLLIOPS:"[sS][lL][lL][iI]"
+// ANDOPS:"[aA][nN][dD]"
+// ANDIOPS:"[aA][nN][dD][iI]"
+// OROPS:"[oO][rR]"
+// ORIOPS:"[oO][rR][iI]"
+// BEQOPS:"[bB][eE][qQ]"
+// BNEOPS:"[bB][nN][eE]"
+// BLTOPS:"[bB][lL][tT]"
+// BGEOPS:"[bB][gG][eE]"
 
 
-ADDOPS: /add/i
-SUBOPS: /sub/i
-LWOPS: /lw/i
-SWOPS: /sw/i
-
-ADDIOPS: /addi/i
-
-BEQOPS: /beq/i
-BNEOPS: /bne/i
+ADDOPS: "ADD"
+SUBOPS: "SUB"
+LWOPS: "LW"
+SWOPS: "SW"
+ADDIOPS: "ADDI"
+SLTOPS:"SLT"
+SLTIOPS:"SLTI"
+SLLOPS:"SLL"
+SLLIOPS:"SLLI"
+SRLOPS:"SRL"
+SRLIOPS:"SRLI"
+ANDOPS:"AND"
+ANDIOPS:"ANDI"
+OROPS:"OR"
+ORIOPS:"ORI"
+BEQOPS:"BEQ"
+BNEOPS:"BNE"
+BLTOPS:"BLT"
+BGEOPS:"BGE"
 
 
 
@@ -81,7 +120,7 @@ LABELREF.1: /[a-zA-Z][0-9a-zA-Z]*/
  
 //Data Types
 HEX.100: /0[xX][0-9A-Fa-f]{1,8}/
-INT.1: /\d/+
+INT.1: /[\+\-]/?/\d/+
 LABELDEC.3: /[a-zA-Z][0-9a-zA-Z]*/":"
 
 LPAREN: "("
