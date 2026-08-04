@@ -70,7 +70,7 @@ def get_excycle(ifmt,aval,bval,imm,f3,f7,pc):
 def get_lmd_mem(memdf,alu):
     base_address=ba2hex(int2ba(32*math.floor(ba2int(alu)/32),length=32)).upper()
     col=f'Value (+{hex(ba2int(alu)%32)[2:].upper()})'
-    return memdf.loc[base_address,col]
+    return hex2ba(memdf.loc[base_address,col])
 def set_lmd_mem(memdf,alu,bval):
     base_address=ba2hex(int2ba(32*math.floor(ba2int(alu)/32),length=32)).upper()
     col=f'Value (+{hex(ba2int(alu)%32)[2:].upper()})'
@@ -78,10 +78,20 @@ def set_lmd_mem(memdf,alu,bval):
     memdf.loc[base_address,col]=ba2hex(bval).upper()
     print(memdf.loc[base_address,col])
     # return memdf
-def get_step_run(pc,instr_fmt,ins,memdf,registers):
+def get_step_run(pc,instr_fmt,ins,memdf,registers,cycle_cnt=0):
+    pipeline_df=[]
+    cylce_df=[]
+    cycle_row={'address':pc,'instruction':ins,'cycle':cycle_cnt}
+    pipeline_row=cycle_row.copy()
     ir=hex2ba(instr_fmt)
     pc=hex2ba(pc)
     npc=int2ba(ba2int(pc)+4,length=32)
+    cycle_cnt+=1
+    cycle_row.update({'IF/ID.IR':ba2hex(ir).upper(),'IF/ID.NPC':ba2hex(npc).upper(), 'PC':ba2hex(pc).upper(),'cycle':cycle_cnt})
+    pipeline_row.update({'stage':'IF','cycle':cycle_cnt})
+    pipeline_df.append(pipeline_row.copy())
+    cylce_df.append(cycle_row.copy())
+
     areg=registers[ba2int(ir[-20:-15])]
     breg=registers[ba2int(ir[-25:-20])]
 
@@ -98,26 +108,62 @@ def get_step_run(pc,instr_fmt,ins,memdf,registers):
         raise Exception('later')
     imm=bitarray(str(imm_val[0])*(32-len(imm_val)))
     imm.extend(imm_val)
+    cycle_cnt+=1
+    cycle_row.update({'ID/EX.A':ba2hex(areg).upper(),'ID/EX.B': ba2hex(breg).upper(),'ID/EX.Imm':ba2hex(imm).upper(),'ID/EX.NPC':cycle_row['IF/ID.NPC'],'ID/EX.IR':cycle_row['IF/ID.IR'],'cycle':cycle_cnt})
+    pipeline_row.update({'stage':'ID','cycle':cycle_cnt})
+    pipeline_df.append(pipeline_row.copy())
+    cylce_df.append(cycle_row.copy())
+
+
     cond,alu=get_excycle(ifmt,areg,breg,imm,ir[-15:-12].to01(),ir[:-25].to01(),pc)
+    cycle_cnt+=1
+    cycle_row.update({'EX/MEM.ALUoutput':ba2hex(alu).upper(),'EX/MEM.cond':ba2hex(cond).upper(),'EX/MEM.IR':cycle_row['ID/EX.IR'],'EX/MEM.B':cycle_row['ID/EX.B'],'cycle':cycle_cnt})
+    pipeline_row.update({'stage':'EX','cycle':cycle_cnt})
+    pipeline_df.append(pipeline_row.copy())
+    cylce_df.append(cycle_row.copy())
+
+
     if ba2int(cond)>0:
         pc=alu
     else:
         pc=npc
-    cycle_row={"instruction":ins,"IR": ba2hex(ir).upper(), "PC": ba2hex(pc).upper(), "NPC": ba2hex(npc).upper(), "A": ba2hex(areg).upper(), "B": ba2hex(breg).upper(),'Imm':ba2hex(imm).upper(),'cond':ba2hex(cond).upper(),'ALU':ba2hex(alu).upper(),'LMD':None,'Rn':None}
+    # cycle_row={"instruction":ins,"IR": ba2hex(ir).upper(), "PC": ba2hex(pc).upper(), "NPC": ba2hex(npc).upper(), "A": ba2hex(areg).upper(), "B": ba2hex(breg).upper(),'Imm':ba2hex(imm).upper(),'cond':ba2hex(cond).upper(),'ALU':ba2hex(alu).upper(),'LMD':None,'Rn':None}
     lmd=None
     if ifmt=='l':
         lmd=get_lmd_mem(memdf,alu)
-        cycle_row['LMD']=ba2hex(lmd).upper()
+        cycle_row['MEM/WB.LMD']=ba2hex(lmd).upper()
     elif ifmt=='s':
         set_lmd_mem(memdf,alu,breg)
+        cycle_row['MEM[EX/MEM.ALUOutput]']=ba2hex(breg).upper()
+    
+    cycle_cnt+=1
+    cycle_row.update({'MEM/WB.IR':cycle_row['EX/MEM.IR'],'MEM/WB.ALUoutput':cycle_row['EX/MEM.ALUoutput'],'cycle':cycle_cnt,'PC':ba2hex(pc).upper()})
+    pipeline_row.update({'stage':'MEM','cycle':cycle_cnt})
+    pipeline_df.append(pipeline_row.copy())
+    cylce_df.append(cycle_row.copy())
+    
     if ifmt=='l':
-        cycle_row['Rn']=ba2hex(lmd).upper()
+        cycle_row['REGS[MEM/WB.IR[rd]]']=ba2hex(lmd).upper()
+        rd=bitarray('0'*(32-len(ir[-12:-7])))
+        rd.extend(ir[-12:-7])
+        cycle_row['rd']=ba2hex(rd).upper()
         registers[ba2int(ir[-12:-7])]=lmd
     elif ifmt in 'ir':
-        cycle_row['Rn']=ba2hex(alu).upper()
+        cycle_row['REGS[MEM/WB.IR[rd]]']=ba2hex(alu).upper()
+        rd=bitarray('0'*(32-len(ir[-12:-7])))
+        rd.extend(ir[-12:-7])
+        cycle_row['rd']=ba2hex(rd).upper()
         registers[ba2int(ir[-12:-7])]=alu
     pc=ba2hex(pc).upper()
-    return cycle_row
+
+    cycle_cnt+=1
+    cycle_row.update({'cycle':cycle_cnt})
+    pipeline_row.update({'stage':'WB','cycle':cycle_cnt})
+    pipeline_df.append(pipeline_row.copy())
+    cylce_df.append(cycle_row.copy())
+
+
+    return pipeline_df,cylce_df
 def get_init_memory():
     memidx=[ba2hex(int2ba(i,length=32,signed=False)).upper() for i in range(0,2047,32)]
     memrow=[{f'Value (+{hex(k*4)[2:].upper()})':'0'*8 for k in range(8)} for i in range(0,2047,32)]
