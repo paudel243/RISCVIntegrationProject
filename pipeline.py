@@ -195,6 +195,7 @@ def get_cycle(prev_reg,start,ins,memdf,registers,cycle_cnt=0,load_mem_stall=Fals
         elif ifmt == 'b':
             imm_val=ir[-32:-25]+ir[-12:-7]
             imm_val=bitarray(imm_val[0])+bitarray(imm_val[-1])+imm_val[1:11]
+            # break
         else:
             raise Exception('later')
         imm=bitarray(str(imm_val[0])*(32-len(imm_val)))
@@ -213,12 +214,9 @@ def get_cycle(prev_reg,start,ins,memdf,registers,cycle_cnt=0,load_mem_stall=Fals
             pc = start.upper()
         else:
             pc = prev_reg['PC'].upper()
-
         ir_hex = get_base_ir(memdf, hex2ba(pc))
         ir = hex2ba(ir_hex)
-
         next_pc = ba2hex(int2ba(ba2int(hex2ba(pc)) + 4, length=32)).upper()
-
         if ir[-7:].to01() == '1100011':
             rs1 = ba2int(ir[-20:-15])
             rs2 = ba2int(ir[-25:-20])

@@ -127,7 +127,7 @@ def get_step_run(pc,instr_fmt,ins,memdf,registers,cycle_cnt=0):
         pc=alu
     else:
         pc=npc
-    # cycle_row={"instruction":ins,"IR": ba2hex(ir).upper(), "PC": ba2hex(pc).upper(), "NPC": ba2hex(npc).upper(), "A": ba2hex(areg).upper(), "B": ba2hex(breg).upper(),'Imm':ba2hex(imm).upper(),'cond':ba2hex(cond).upper(),'ALU':ba2hex(alu).upper(),'LMD':None,'Rn':None}
+    
     lmd=None
     if ifmt=='l':
         lmd=get_lmd_mem(memdf,alu)

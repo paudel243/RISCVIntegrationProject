@@ -3,7 +3,7 @@
 - Miguel Jusayan Puig
 - Dennis Paulo S. Delgado
 
-**Milestone 2 Demo Video**: [link](https://youtu.be/YT7wjEmbsKg)
+**Milestone 3 Demo Video**: [link](https://youtu.be/VWEc-uyx8AM)
 ### Steps to run locally
 install dependencies
 ```pip install -r requirements.txt```
@@ -11,6 +11,20 @@ install dependencies
 Requirement: Be in working directory
 run through streamlit cli (installed in the dependencies)
 ```streamlit run app.py```
+
+
+
+### Milestone 3 updates:
+- Pipelining 
+- Forwarding
+- Pipeline#2 
+- Separate Memory
+- Pipeline Map / Pipeline Register Output
+- Full Execution and Single Step Instruction Execution
+
+
+
+
 
 
 ### Milestone 2 updates:

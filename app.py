@@ -46,7 +46,7 @@ pipelinemap_reg=[
     'WB.instruction',
     'WB.address',
 ]
-run_style_list=['Sequential','Pipeline']
+run_style_list=['Pipeline']
 data_hazard_list=['Forwarding']
 control_hazard_list=['Pipeline#2']
 
@@ -110,7 +110,7 @@ def refresh_cycle_table():
     temp_df.index=temp_df.register.apply(lambda x:ireg_order.index(x))
     temp_df.sort_index(inplace=True)
     st.session_state.cycle_table=temp_df
-# Register initialization
+
 if 'registers' not in st.session_state:
     st.session_state.registers = {i: bitarray(2 ** 5) for i in range(32)}
 if 'iset' not in st.session_state:
@@ -215,48 +215,15 @@ main:'''
 # code editor
 with st.expander("Settings", expanded=True):
     col_d, col_e, col_f = st.columns([1,1,1])
-    run_style = col_d.selectbox("Execution:", run_style_list, index=run_style_list.index("Sequential"))
+    run_style = col_d.selectbox("Execution:", run_style_list, index=run_style_list.index("Pipeline"))
     data_hazard_sol = col_e.selectbox("theme:", data_hazard_list)
     control_hazard_sol = col_f.selectbox("shortcuts:", control_hazard_list)
 col1, col2 = st.columns(2)
 with col1:
     st.subheader("Code Editor")
     response_dict = code_editor(code_text, height=height, theme=theme, shortcuts=shortcuts, focus=focus, buttons=build_btns, options={"wrap": wrap, "showLineNumbers": True})
-    
-# show response dict
-def run_button_seq():
-    # print(code_text)
-    st.session_state.registers = {i: bitarray(2 ** 5) for i in range(32)}
-    st.session_state.memory =  get_init_memory()
-    reload_register_table()
-    st.session_state.sec = pd.DataFrame()
-    st.session_state.current_addr = None
-    st.session_state.cycle_counter = 1
-    st.session_state.pipeline_schedule = []
-    for _,row in st.session_state.memory_idx.iterrows():
-        set_mem_pipe(st.session_state.memory,row['address'],row['hex'])
-    df = st.session_state.instructions
-    pc=df['address'].min()
-    st.session_state.register_cycles=[]
-    st.session_state.pipeline_schedule=[]
-    cycle_count=0
-    while pc in df['address'].str.upper().tolist():
-        row=df.loc[df.address.str.upper()==pc].iloc[0]
-        pipeline_rows,cycle_rows=get_step_run(pc,row['instruction_format(Hex)'],row['basic'],st.session_state.memory,st.session_state.registers,cycle_count)
-        st.session_state.register_cycles.extend(cycle_rows)
-        st.session_state.pipeline_schedule.extend(pipeline_rows)
-        cycle_count+=5
-        pc=cycle_rows[-1]['PC']
-        print(pc)
 
-    st.session_state.cycle_counter +=cycle_count
-    st.session_state.complete_run = True
-    print(df[['address', 'basic', 'instruction_format(Hex)']])
-    print("Returned:", cycle_row["PC"], branching,cycle_row["IF/ID.instruction"]
- )
-    reload_register_table()
 def run_button_pipe():
-    # print(code_text)
     st.session_state.registers = {i: bitarray(2 ** 5) for i in range(32)}
     st.session_state.memory =  get_init_memory_pipe()
     reload_register_table()
@@ -290,12 +257,9 @@ def run_button_pipe():
             ins=None
         pipeline_rows,cycle_row,branching=get_cycle(st.session_state.internal_reg,pc,ins,st.session_state.memory,st.session_state.registers,cycle_count,load_mem_stall)
         pc=cycle_row['PC']
+        print("NEXT PC:", cycle_row['PC'])
+        print("IF:", cycle_row['IF/ID.address'], cycle_row['IF/ID.instruction'])
         print(pc,cycle_count,load_mem_stall)
-        #if branching==2:
-            # print('branching',cycle_row['MEM/WB.address'],cycle_row['MEM/WB.instruction'],'wb')
-            # if cycle_row
-            #set_pnt_registers(cycle_row)
-            # print('branching',cycle_row['MEM/WB.address'],cycle_row['MEM/WB.instruction'],'wb')
         load_mem_stall=forward_data(cycle_row,load_mem_stall)
         st.session_state.register_cycles.append(cycle_row)
         st.session_state.pipeline_schedule.extend(pipeline_rows)
@@ -304,11 +268,9 @@ def run_button_pipe():
     st.session_state.complete_run = True
     reload_register_table()
 def step_button_pipe():
-    # print(code_text)
     df = st.session_state.instructions
     pc=st.session_state.current_addr
     print(st.session_state.current_addr)
-    # cycle_df=st.session_state.sec
     if (pc in df['address'].str.upper().tolist()) or (len(st.session_state.last_schedule)>0):
         if pc in df['address'].str.upper().tolist():
             row=df.loc[df.address.str.upper()==pc].iloc[0]
@@ -320,8 +282,6 @@ def step_button_pipe():
         pipeline_rows,cycle_row,branching=get_cycle(st.session_state.internal_reg,pc,ins,st.session_state.memory,st.session_state.registers,st.session_state.cycle_counter,st.session_state.load_mem_stall)
         st.session_state.current_addr=cycle_row['PC']
         print(pc,st.session_state.cycle_counter,st.session_state.load_mem_stall)
-        # if branching==2:
-        #     set_pnt_registers(cycle_row)
         st.session_state.load_mem_stall=forward_data(cycle_row,st.session_state.load_mem_stall)
         st.session_state.register_cycles.append(cycle_row)
         st.session_state.pipeline_schedule.extend(pipeline_rows)
@@ -331,29 +291,10 @@ def step_button_pipe():
     else:
         st.session_state.complete_run = True
     reload_register_table()
-def step_button_seq():
-    # print(code_text)
-    df = st.session_state.instructions
-    pc=st.session_state.current_addr
-    print(st.session_state.current_addr)
-    # cycle_df=st.session_state.sec
-    if pc in df['address'].str.upper().tolist():
-        # cycle_addr=pc
-        row=df.loc[df.address.str.upper()==pc].iloc[0]
-        pipeline_rows,cycle_rows=get_step_run(pc,row['instruction_format(Hex)'],row['basic'],st.session_state.memory,st.session_state.registers,st.session_state.cycle_counter)
-        st.session_state.register_cycles.extend(cycle_rows)
-        st.session_state.pipeline_schedule.extend(pipeline_rows)
-        st.session_state.current_addr=cycle_rows[-1]['PC']
-        st.session_state.cycle_counter+=5
-    else:
-        st.session_state.complete_run = True
-    reload_register_table()
+
 def build_pipeline_table(sec_df):
     table_rows = []
-
-    # Convert pipeline schedule into instruction groups
     instructions = {}
-
     for entry in st.session_state.pipeline_schedule:
 
         instr = entry["instruction"]
@@ -364,27 +305,17 @@ def build_pipeline_table(sec_df):
             instructions[instr] = {}
 
         instructions[instr][cycle] = stage
-
-
-    # Find max cycle
     max_cycle = 0
     for stages in instructions.values():
         if len(stages) > 0:
             max_cycle = max(max_cycle, max(stages.keys()))
-
-
-    # Build table
     for instr, stages in instructions.items():
 
         row = {
             "Instruction": instr
         }
-
-        # create cycle columns
         for cycle in range(1, max_cycle + 1):
             row[f"C{cycle}"] = ""
-
-        # fill stage names
         for cycle, stage in stages.items():
             row[f"C{cycle}"] = stage
 
@@ -449,12 +380,6 @@ if len(response_dict['id']) != 0 and (response_dict['type'] == "selection" or re
             
         if st.session_state.code_built:
             st.dataframe(st.session_state.instructions, use_container_width=True)
-            if not st.session_state.complete_run and run_style=='Sequential':
-                subcol1, subcol2 = st.columns(2)
-                with subcol1:
-                    st.button('Run', on_click=run_button_seq)
-                with subcol2:
-                    st.button('Step Run', on_click=step_button_seq)
             if not st.session_state.complete_run and run_style=='Pipeline':
                 subcol1, subcol2 = st.columns(2)
                 with subcol1:
